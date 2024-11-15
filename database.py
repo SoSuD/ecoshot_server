@@ -113,16 +113,22 @@ async def db_activate_key(key_data, hwid):
                 query2 = '''
                 UPDATE users SET sub_until = ($2::BIGINT + $3::BIGINT) WHERE hwid_connected = $1;
                 '''
-
+                query3 = """
+                INSERT INTO activations (activated_user_id, activated_hwid, key)
+                SELECT user_id, $1::text, $2::text
+                FROM users
+                WHERE hwid_connected = $1::text;
+                """
                 # Выполняем оба обновления
                 await conn.execute(query1, key_data["id"], hwid)
                 await conn.execute(query2, hwid, int(time.time()), key_data["sub_for_seconds"])
+                await conn.execute(query3, hwid, key_data["key"])
 
     finally:
         await pool.close()
 
     #return key_data
-    return await db_check_hwid(hwid)
+    return await db_check_hwid(hwid), 200
 
 
 async def main():

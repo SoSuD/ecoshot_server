@@ -5,7 +5,7 @@ from models import *
 from utils import *
 from database import *
 
-app = FastAPI(debug=True)
+app = FastAPI(debug=True, host="0.0.0.0")
 
 
 @app.post("/version_info/")
@@ -17,6 +17,10 @@ async def version_info(data: VersionData, _: None = Depends(require_signature)):
 @app.post("/check_hwid/")
 async def check_hwid(data: Hwid):
     result = await db_check_hwid(data.hwid)
+    if not result:
+        await db_add_user(data.hwid)
+        result = await db_check_hwid(data.hwid)
+
     return result
 
 
@@ -29,8 +33,11 @@ async def add_hwid(data: Hwid):
 @app.post("/activate_key/")
 async def activate_key(data: Key):
     key_data = await db_get_key(data.key)
+    print(key_data)
     if key_data:
         result = await db_activate_key(key_data, data.hwid)
-        return result
-    else:
-        return False
+        if result:
+
+            print(result)
+            return result
+    raise HTTPException(status_code=400, detail="key is not valid")
